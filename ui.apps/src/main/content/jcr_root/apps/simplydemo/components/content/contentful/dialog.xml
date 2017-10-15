@@ -21,11 +21,11 @@
                         <article1
                             jcr:primaryType="nt:unstructured"
                             text="article 1"
-                            value="first_article"/>
+                            value="23WJmxPYycyAguScYO4sgm"/>
                         <article2
                             jcr:primaryType="nt:unstructured"
                             text="article 2"
-                            value="second_article"/>
+                            value="6SvVjrV7R6OWS6CCaSSY6A"/>
                     </options>
                 </contentLink>
             </items>

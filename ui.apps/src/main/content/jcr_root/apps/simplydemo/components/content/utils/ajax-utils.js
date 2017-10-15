@@ -14,7 +14,8 @@ use(function () {
         }
 
         if(t == "contentful") {
-            responseJson = parseContentful(fetch('',item));
+            var url = "https://cdn.contentful.com/spaces/zfl4wimxkkv9/entries/" + item + "?access_token=483b0333aea5eecf15a72256d6e65c8f02af618fc490d34a58033ac01f6476a8";
+  		    value = JSON.parse(fetch(url)).fields.articleMain;
         }
 
         console.log("Headless CMS value for inclusion in page : " + value);

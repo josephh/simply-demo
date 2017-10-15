@@ -1,0 +1,13 @@
+
+
+<h4 data-sly-test="${wcmmode.edit}">Kentico Content : edit mode</h4>
+
+<div data-sly-use.kentico="kentico.js" data-sly-unwrap></div>
+
+<p data-sly-test="${wcmmode.edit}">Selection ? ${kentico.link}</p>
+
+
+<div data-sly-test="${wcmmode.preview || wcmmode.disabled}" data-sly-unwrap>
+	<div>${kentico.value @ context='html'}</div>
+</div>
+

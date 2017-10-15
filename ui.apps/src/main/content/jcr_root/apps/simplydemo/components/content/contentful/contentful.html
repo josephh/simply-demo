@@ -1,0 +1,13 @@
+
+
+<h4 data-sly-test="${wcmmode.edit}">Contentful Content : edit mode</h4>
+
+<div data-sly-use.contentful="contentful.js" data-sly-unwrap></div>
+
+<p data-sly-test="${wcmmode.edit}">Selection ? ${contentful.link}</p>
+
+
+<div data-sly-test="${wcmmode.preview || wcmmode.disabled}" data-sly-unwrap>
+	<div>${contentful.value @ context='html'}</div>
+</div>
+

@@ -1,54 +1,217 @@
-# Sample AEM project template
 
-This is a project template for AEM-based applications. It is intended as a best-practice set of examples as well as a potential starting point to develop your own functionality.
+# Executive Summary
+Simplyhealth is embarking on a transformative Digital Business journey. As part of our technology strategy, we're introducing the use of headless CMS services. These services play an important business role by allowing centralised management of cross-channel copy and media. They also allows us to separate the content itself from channel specific formatting, layout and delivery of that content across web, email, DM as well as 3rd party channels.
 
-## Modules
+## Preferred CMS (View)
+AEM is our chosen platform to deliver web specific site management and layout services whilst integrating with the central content services API to obtain copy and media for use in page scaffolding and components.
 
-The main parts of the template are:
+1. Understanding/ assumptions
+  * There are a number of headless CMSs.
+  * Some common content authoring approaches and conventions are in place across the headless CMSs.
+  * Copy and media publishing is done via the headless CMS's own UI.
+  * AEM is intended to aggregate content at authoring time, render and cache it.
 
-* core: Java bundle containing all core functionality like OSGi services, listeners or schedulers, as well as component-related Java code such as servlets or request filters.
-* ui.apps: contains the /apps (and /etc) parts of the project, ie JS&CSS clientlibs, components, templates, runmode specific configs as well as Hobbes-tests
-* ui.content: contains sample content using the components from the ui.apps
-* ui.tests: Java bundle containing JUnit tests that are executed server-side. This bundle is not to be deployed onto production.
-* ui.launcher: contains glue code that deploys the ui.tests bundle (and dependent bundles) to the server and triggers the remote JUnit execution
+## Brief
+Scenario Activity
 
-## How to build
+Describe, in your own words, how you might integrate a headless CMS style API service into AEM considering the following areas:
 
-To build all the modules run in the project root directory the following command with Maven 3:
+### The content authoring process (e.g. approval phases for copy & media and page/site publishing)
+1. Clarifications
+  * Does this include bi-directional interaction with the headles CMSs?  I.e. pushing copy and content up to the headless CMS as well as fetching?
 
-    mvn clean install
+1. Employ typical AEM workflow
+  1. author chooses workflow (or is delegated a workflow step)
+  1. editor approves
+  1. site admin publishes [enhanced page activation? Check content is still available in Headless CMS?]
 
-If you have a running AEM instance you can build and package the whole project and deploy into AEM with  
+### AEM component design (e.g. use of external content from an external API)
+1. Components
+  1. Configurable individual component groups, per CMS api, e.g. "Kentico Text", "Kentico Image"...
+  1. Individual components with conditional CMS selector, e.g. "Text [Kentico/ Contentful/ S3]", "Image [Kentico/ Contentful/ S3]"...
+  1. Selection of available items is presented inside component.  E.g. all text in Kentico
+  1. Teaser of each item is presented when hovering over each item (i.e. text) or presented as thumbnails (i.e. image).
 
-    mvn clean install -PautoInstallPackage
-    
-Or to deploy it to a publish instance, run
+1. Service code: 'adapter' and 'manager + providers' patterns
+  1.  Manager#shouldFetch // e.g. simple type test allows manager code to be written once and new headless CMSs to be added and register themselves on-the-fly (Open-Closed principle).
+  1. Headless api provider is configured with
+    * location (i.e. URL)
+    * credentials (e.g. project id, access tokens)
+    * endpoints to retrieve different sorts of content
+  1. how to manage this service coding approach?
+    - interface jar + individual headless jar implementations
 
-    mvn clean install -PautoInstallPackagePublish
-    
-Or to deploy only the bundle to the author, run
+### Page compilation in author and publisher instances
+* Author sees outline with referenced content items
+* Publish view/ preview shows final rendering
 
-    mvn clean install -PautoInstallBundle
+###  AEM dispatcher caching (e.g. understanding external content changes)
+1. Cache invalidation
+  * headless content should be pulled into aem, rendered and cached by the server.  So, updates to headless CMS must notify, e.g. a web hook in AEM or a subscriber to headless events, track down all pages featuring that published content and flush/ invalidate cache for those.
 
-## Testing
+```
+curl -i -X POST http://localhost/dispatcher/invalidate.cache \
+  -u admin:admin \
+  -H "CQ-Action: Delete" \
+  -H "CQ-Handle: /content/simplydemo" \
+  -H "Content-Length: 0"
 
-There are three levels of testing contained in the project:
-
-* unit test in core: this show-cases classic unit testing of the code contained in the bundle. To test, execute:
-
-    mvn clean test
-
-* server-side integration tests: this allows to run unit-like tests in the AEM-environment, ie on the AEM server. To test, execute:
-
-    mvn clean integration-test -PintegrationTests
-
-* client-side Hobbes.js tests: JavaScript-based browser-side tests that verify browser-side behavior. To test:
-
-    in the browser, open the page in 'Developer mode', open the left panel and switch to the 'Tests' tab and find the generated 'MyName Tests' and run them.
+curl -i -X POST /dispatcher/invalidate.cache HTTP/1.1 \
+  -H "CQ-Action: Activate" \
+  -H "Content-Type: text/plain" \
+  -H "CQ-Handle: /content/simplydemo" \
+  -H "Content-Length: 0"
 
 
-## Maven settings
+  curl -X POST \
+    http://localhost/dispatcher/invalidate.cache \
+    -H 'authorization: Basic YWRtaW46YWRtaW4=' \
+    -H 'cache-control: no-cache' \
+    -H 'content-length: 0' \
+    -H 'content-type: text/plain' \
+    -H 'cq-action: Delete' \
+    -H 'cq-handle: /content/simplydemo'
 
-The project comes with the auto-public repository configured. To setup the repository in your Maven settings, refer to:
+FLUSH servlet
+http://localhost:4502/bin/flushcache/html?handle=/content/simply-demo
 
-    http://helpx.adobe.com/experience-manager/kb/SetUpTheAdobeMavenRepository.html
+```
+
+#### httpd
+1. apache start: /usr/sbin/apachectl start|restart|stop
+1. apache config: /etc/apache2/httpd.conf
+1. apache logs: /var/logs/apache2
+1. apache docs folder: /Library/WebServer/Documents
+1. mod_dispatcher.so is stored in folder libexec/apache2/mod_dispatcher.so (-> /usr/libexec/apache2)
+
+
+#### Initial investigations
+1. What is the preferred strategy? - this influences particularly the caching and performance of content delivery.
+   1. poll content from headless CMS; store it in AEM's CRX.
+       * PROs E.g. as scheduled batch operations.  Gets benefit of AEM to manage content.  Solves cache invalidation issue.  Could be more performant by only syncing only changes.
+       * CONs duplicates content and duplicates content management effort.  Content may be out of date - though content 'sync' could be manual as well as automateic.
+   1. pull referenced data into pages built by AEM - server side - render those pages server side (with cq:include?) and cache in dispatcher.
+   1. 'configure' pages in AEM and pull content directly to browser?
+
+#### Development considerations
+1. Examine the number of content providers (headless CMSs) and uniformity across APIs: consistent structure within each CMS is needed to make content accessible!
+E.g.s
+Kentico (provide your own content types, built from 'text', 'richtext', 'number', 'date', 'multiple choice' etc)
+> https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items/see_your_doctor_blog__with_image_
+> https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items/see_your_doctor_blog__with_image_
+
+1. Identify common implementations, models, api interaction with headless CMSs - to find suitable coding abstractions.
+    1. An external CMS component configurator.
+        1. specify location
+        1. connection credentials
+    2. External content - or additional properties added to (extended) existing components
+        1. select source
+        1. select type
+1. Connectors
+1. Access control and security restrictions
+
+PUSH notifications
+PUB-SUB events
+
+#### Implementation notes
+##### Kentico
+* json response, curl https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items/first_article
+```json
+{
+  "item": {
+    "system": {
+      "id": "abf466de-c071-4ee3-80db-e14d5ab314b4",
+      "name": "First article",
+      "codename": "first_article",
+      "language": "default",
+      "type": "article",
+      "sitemap_locations": [],
+      "last_modified": "2017-10-15T21:29:48.0865295Z"
+    },
+    "elements": {
+      "article_entry": {
+        "type": "rich_text",
+        "name": "Article entry",
+        "images": {},
+        "links": {},
+        "modular_content": [],
+        "value": "<h1>First Kentico article heading</h1>\n<h2>Take lots of exercise</h2>\n<p>\"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi <strong>...THIS TEXT IS COMING FROM KENTICO...</strong> ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\"</p>"
+      }
+    }
+  },
+  "modular_content": {}
+```
+> https://app.kenticocloud.com/
+<?xml version="1.0" encoding="UTF-8"?> <jcr:root xmlns:sling="http://sling.apache.org/jcr/sling/1.0" xmlns:cq="http://www.day.com/jcr/cq/1.0" xmlns:jcr="http://www.jcp.org/jcr/1.0" jcr:description="Page Template" jcr:primaryType="cq:Template" jcr:title="Page Template" allowedPaths="[/content/site/en(/.*)?]" ranking="{Long}100"> <jcr:content jcr:primaryType="cq:PageContent" sling:resourceType="site/components/page/interior" cq:designPath="/etc/designs/site"> <text jcr:primaryType="nt:unstructured" sling:resourceType="wcm/foundation/components/text" /> </jcr:content> </jcr:root>
+
+> developer docs https://developer.kenticocloud.com/reference
+
+> project id - 615bf5da-4720-450f-813f-ac824dcb831f
+
+>  Retrieve published content from your project using the production URL:
+https://deliver.kenticocloud.com/
+
+> e.g. https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items
+
+###### Delivery API
+
+The Kentico Cloud Delivery API is read-only. You can retrieve content but not add or modify it.
+
+Production vs Preview: You can work with the Delivery API in two ways. Either retrieve published versions of content items or preview their yet unpublished versions. In both cases, you use the same methods to request data but with a different base URL.
+
+   1. published content can't be edited - copy, amend and publish a new version
+   1. To access content: 'Delivery API' provides anonymous read-only access to all PUBLISHED content.  To view unpublished requires authorization header in requests
+   1. Items
+     *  https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items/first_article
+     *  https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items/second_article
+
+
+##### Contentful
+* json response, curl https://cdn.contentful.com/spaces/zfl4wimxkkv9/entries/6SvVjrV7R6OWS6CCaSSY6A?access_token=483b0333aea5eecf15a72256d6e65c8f02af618fc490d34a58033ac01f6476a8
+```json
+{
+  "sys": {
+    "space": {
+      "sys": {
+        "type": "Link",
+        "linkType": "Space",
+        "id": "zfl4wimxkkv9"
+      }
+    },
+    "id": "6SvVjrV7R6OWS6CCaSSY6A",
+    "type": "Entry",
+    "createdAt": "2017-10-12T22:18:11.769Z",
+    "updatedAt": "2017-10-12T22:18:11.769Z",
+    "revision": 1,
+    "contentType": {
+      "sys": {
+        "type": "Link",
+        "linkType": "ContentType",
+        "id": "article"
+      }
+    },
+    "locale": "en-GB"
+  },
+  "fields": {
+    "articleHeading": "Contentful article 2",
+    "articleMain": "There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form, by injected humour, or randomised words which don't look even slightly believable. If you are going to use a passage of Lorem Ipsum, you need to be sure there isn't anything embarrassing hidden in the middle of text. All the Lorem Ipsum generators on the Internet tend to repeat predefined chunks as necessary, making this the first true generator on the Internet. It uses a dictionary of over 200 Latin words, combined with a handful of model sentence structures, to generate Lorem Ipsum which looks reasonable. The generated Lorem Ipsum is therefore always free from repetition, injected humour, or non-characteristic words etc."
+  }
+}
+```
+
+> developer docs: https://www.contentful.com/developers/docs/concepts/webhooks/
+
+> Space Id: zfl4wimxkkv9
+
+> Content delivery api access token: 483b0333aea5eecf15a72256d6e65c8f02af618fc490d34a58033ac01f6476a8
+
+> Content preview api - access token: b3271ed6a14847f7056f9ea8062619669ca069555321bd2a27aa8e05705747dd
+
+Contentful
+1. e.g. curl https://cdn.contentful.com/spaces/zfl4wimxkkv9/entries/6SvVjrV7R6OWS6CCaSSY6A?access_token=b3271ed6a14847f7056f9ea8062619669ca069555321bd2a27aa8e05705747dd
+
+### Challenges
+* Not using the DAM - so missing those benefits, e.g. automatic image renditions
+* Cache performance
+* Limited use of AEM CRX and CMS
+* Mixed CMS approaches across Headless CMSs

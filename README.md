@@ -18,83 +18,50 @@ Describe, in your own words, how you might integrate a headless CMS style API se
 
 ### The content authoring process (e.g. approval phases for copy & media and page/site publishing)
 1. Clarifications
-  * Does this include bi-directional interaction with the headles CMSs?  I.e. pushing copy and content up to the headless CMS as well as fetching?
+  * Does this include bi-directional interaction with the headless CMSs?  I.e. pushing copy and content up to the headless CMS as well as fetching?
 
 1. Employ typical AEM workflow
   1. author chooses workflow (or is delegated a workflow step)
   1. editor approves
-  1. site admin publishes [enhanced page activation? Check content is still available in Headless CMS?]
+  1. enhanced page activation? Check content is still available in Headless CMS? -> site administrator publishes
 
 ### AEM component design (e.g. use of external content from an external API)
 1. Components
-  1. Configurable individual component groups, per CMS api, e.g. "Kentico Text", "Kentico Image"...
-  1. Individual components with conditional CMS selector, e.g. "Text [Kentico/ Contentful/ S3]", "Image [Kentico/ Contentful/ S3]"...
-  1. Selection of available items is presented inside component.  E.g. all text in Kentico
-  1. Teaser of each item is presented when hovering over each item (i.e. text) or presented as thumbnails (i.e. image).
+  1. A suitable strategy may fall out - to some extent - from how headless CMSs are used.  What authoring conventions are in place?  What uniformity of "content models" (this is shaped by content owners - e.g. simply health) and APIs (as published by product owners, i.e. Contentful) are available across headless CMSs?
+  1. For authoring components, a smaller number of highly configurable authoring components could be built. E.g.s individual components with conditional CMS selector, e.g. "Text [Kentico/ Contentful/ S3]", "Image [Kentico/ Contentful/ S3]". This would mean fewer authoring components for authors to use but less intuitive and more complex configuration.  Greater complexity in development effort and potentially harder to test/ maintain/ extend.     
+  1. Another (preferable) approach is configurable individual component groups - one OSGi bundle per CMS api - e.g. ["Kentico Text", "Kentico Image"...] and ["Contentful Text", "Contentful Image"...].  Configuration is done once per component group = more intuitive authoring config, better UI and code 'encapsulation' and 'coherence'.
+  1. Selection of available items is presented inside component.  E.g. all text items published on Kentico are shown to authors to pick from when adding text from Kentico.  This is a challenge both in terms of app performance (network latency etc) and authoring GUI; e.g. how to present an author with several hundred content items to chose from? "Teasers" of content items?
 
-1. Service code: 'adapter' and 'manager + providers' patterns
-  1.  Manager#shouldFetch // e.g. simple type test allows manager code to be written once and new headless CMSs to be added and register themselves on-the-fly (Open-Closed principle).
-  1. Headless api provider is configured with
+1. Service code (backing components): 'adapter' and 'manager + providers' patterns
+  1.  `Manager#shouldFetch` // e.g. simple type test allows manager code to be written once in core code. New headless CMSs to be added and register themselves on-the-fly (Open-Closed principle).
+  1. Individual headless CMS AEM service "Adapters" provide interface implementations, e.g. `TextContent#fetchAll()`, `ImageContent#fetch(${id})`
+  1. Individual headless CMS AEM service bundles are configured with
     * location (i.e. URL)
-    * credentials (e.g. project id, access tokens)
-    * endpoints to retrieve different sorts of content
-  1. how to manage this service coding approach?
-    - interface jar + individual headless jar implementations
+    * authorisation and authentication credentials (e.g. project id, access tokens)
 
 ### Page compilation in author and publisher instances
-* Author sees outline with referenced content items
-* Publish view/ preview shows final rendering
+* Author sees page structure with static content values.  Conditional logic supports fetching of actual content from CMS for preview
+* Published / activated + replicated pages are rendered and cached via AEM dispatcher (+ e.g. Apache)
 
 ###  AEM dispatcher caching (e.g. understanding external content changes)
 1. Cache invalidation
-  * headless content should be pulled into aem, rendered and cached by the server.  So, updates to headless CMS must notify, e.g. a web hook in AEM or a subscriber to headless events, track down all pages featuring that published content and flush/ invalidate cache for those.
-
-```
-curl -i -X POST http://localhost/dispatcher/invalidate.cache \
-  -u admin:admin \
-  -H "CQ-Action: Delete" \
-  -H "CQ-Handle: /content/simplydemo" \
-  -H "Content-Length: 0"
-
-curl -i -X POST /dispatcher/invalidate.cache HTTP/1.1 \
-  -H "CQ-Action: Activate" \
-  -H "Content-Type: text/plain" \
-  -H "CQ-Handle: /content/simplydemo" \
-  -H "Content-Length: 0"
-
-
-  curl -X POST \
-    http://localhost/dispatcher/invalidate.cache \
-    -H 'authorization: Basic YWRtaW46YWRtaW4=' \
-    -H 'cache-control: no-cache' \
-    -H 'content-length: 0' \
-    -H 'content-type: text/plain' \
-    -H 'cq-action: Delete' \
-    -H 'cq-handle: /content/simplydemo'
-
-FLUSH servlet
-http://localhost:4502/bin/flushcache/html?handle=/content/simply-demo
-
-```
-
-#### httpd
-1. apache start: /usr/sbin/apachectl start|restart|stop
-1. apache config: /etc/apache2/httpd.conf
-1. apache logs: /var/logs/apache2
-1. apache docs folder: /Library/WebServer/Documents
-1. mod_dispatcher.so is stored in folder libexec/apache2/mod_dispatcher.so (-> /usr/libexec/apache2)
-
+  * headless content should be pulled into aem, rendered and cached by the server.  So, updates to headless CMS must notify, e.g.s
+    1. PUSH TO AEM a web hook exposed from AEM is configured as the 'web hook' in headless CMS
+      * Following notification of changes in published headless content, AEM must find changed pages that include that content.  How to query CRX?  
+          * XQuery
+          * Custom approach extending or copying AEM broken link finder...
+    1. PULL FROM HEADLESS poll for content changes - compare changes against stored metadata of published content stored in CRX and flush/ invalidate cache for those.
 
 #### Initial investigations
 1. What is the preferred strategy? - this influences particularly the caching and performance of content delivery.
    1. poll content from headless CMS; store it in AEM's CRX.
        * PROs E.g. as scheduled batch operations.  Gets benefit of AEM to manage content.  Solves cache invalidation issue.  Could be more performant by only syncing only changes.
        * CONs duplicates content and duplicates content management effort.  Content may be out of date - though content 'sync' could be manual as well as automateic.
-   1. pull referenced data into pages built by AEM - server side - render those pages server side (with cq:include?) and cache in dispatcher.
-   1. 'configure' pages in AEM and pull content directly to browser?
+   1. pull referenced data into pages built by AEM - server side - render those pages server side and cache in dispatcher.
+   1. 'configure' pages in AEM and pull content directly to browser - skipping server side render and making headless provider do caching etc.  With Contentful this is by default anyway given their content is served via CDN.
 
 #### Development considerations
-1. Examine the number of content providers (headless CMSs) and uniformity across APIs: consistent structure within each CMS is needed to make content accessible!
+1. Examine the number of content providers (headless CMSs) and uniformity across APIs: similar structures within each CMSs content models should help achievability.
 E.g.s
 Kentico (provide your own content types, built from 'text', 'richtext', 'number', 'date', 'multiple choice' etc)
 > https://deliver.kenticocloud.com/615bf5da-4720-450f-813f-ac824dcb831f/items/see_your_doctor_blog__with_image_
@@ -109,9 +76,8 @@ Kentico (provide your own content types, built from 'text', 'richtext', 'number'
         1. select type
 1. Connectors
 1. Access control and security restrictions
-
-PUSH notifications
-PUB-SUB events
+1. PUSH notifications
+1. PUB-SUB events
 
 #### Implementation notes
 ##### Kentico
@@ -213,5 +179,6 @@ Contentful
 ### Challenges
 * Not using the DAM - so missing those benefits, e.g. automatic image renditions
 * Cache performance
-* Limited use of AEM CRX and CMS
+* Keeping published content in sync
+* Limited use of AEM CRX and AEM CMS
 * Mixed CMS approaches across Headless CMSs

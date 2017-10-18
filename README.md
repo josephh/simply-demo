@@ -2,7 +2,7 @@
 # Executive Summary
 Simplyhealth is embarking on a transformative Digital Business journey. As part of our technology strategy, we're introducing the use of headless CMS services. These services play an important business role by allowing centralised management of cross-channel copy and media. They also allows us to separate the content itself from channel specific formatting, layout and delivery of that content across web, email, DM as well as 3rd party channels.
 
-## Preferred CMS (View)
+##  Preferred CMS (View)
 AEM is our chosen platform to deliver web specific site management and layout services whilst integrating with the central content services API to obtain copy and media for use in page scaffolding and components.
 
 1. Understanding/ assumptions

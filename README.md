@@ -26,16 +26,16 @@ Describe, in your own words, how you might integrate a headless CMS style API se
   1. enhanced page activation? Check content is still available in Headless CMS? -> site administrator publishes
 
 ### AEM component design (e.g. use of external content from an external API)
-1. Components
-  1. A suitable strategy may fall out - to some extent - from how headless CMSs are used.  What authoring conventions are in place?  What uniformity of "content models" (this is shaped by content owners - e.g. simply health) and APIs (as published by product owners, i.e. Contentful) are available across headless CMSs?
-  1. For authoring components, a smaller number of highly configurable authoring components could be built. E.g.s individual components with conditional CMS selector, e.g. "Text [Kentico/ Contentful/ S3]", "Image [Kentico/ Contentful/ S3]". This would mean fewer authoring components for authors to use but less intuitive and more complex configuration.  Greater complexity in development effort and potentially harder to test/ maintain/ extend.     
-  1. Another (preferable) approach is configurable individual component groups - one OSGi bundle per CMS api - e.g. ["Kentico Text", "Kentico Image"...] and ["Contentful Text", "Contentful Image"...].  Configuration is done once per component group = more intuitive authoring config, better UI and code 'encapsulation' and 'coherence'.
-  1. Selection of available items is presented inside component.  E.g. all text items published on Kentico are shown to authors to pick from when adding text from Kentico.  This is a challenge both in terms of app performance (network latency etc) and authoring GUI; e.g. how to present an author with several hundred content items to chose from? "Teasers" of content items?
+Components
+1. A suitable strategy may fall out - to some extent - from how headless CMSs are used.  What authoring conventions are in place?  What uniformity of "content models" (this is shaped by content owners - e.g. simply health) and APIs (as published by product owners, i.e. Contentful) are available across headless CMSs?
+1. For authoring components, a smaller number of highly configurable authoring components could be built. E.g.s individual components with conditional CMS selector, e.g. "Text [Kentico/ Contentful/ S3]", "Image [Kentico/ Contentful/ S3]". This would mean fewer authoring components for authors to use but less intuitive and more complex configuration.  Greater complexity in development effort and potentially harder to test/ maintain/ extend.     
+1. Another (preferable) approach is configurable individual component groups - one OSGi bundle per CMS api - e.g. ["Kentico Text", "Kentico Image"...] and ["Contentful Text", "Contentful Image"...].  Configuration is done once per component group = more intuitive authoring config, better UI and code 'encapsulation' and 'coherence'.
+1. Selection of available items is presented inside component.  E.g. all text items published on Kentico are shown to authors to pick from when adding text from Kentico.  This is a challenge both in terms of app performance (network latency etc) and authoring GUI; e.g. how to present an author with several hundred content items to chose from? "Teasers" of content items?
 
-1. Service code (backing components): 'adapter' and 'manager + providers' patterns
-  1.  `Manager#shouldFetch` // e.g. simple type test allows manager code to be written once in core code. New headless CMSs to be added and register themselves on-the-fly (Open-Closed principle).
-  1. Individual headless CMS AEM service "Adapters" provide interface implementations, e.g. `TextContent#fetchAll()`, `ImageContent#fetch(${id})`
-  1. Individual headless CMS AEM service bundles are configured with
+Service code (backing components): 'adapter' and 'manager + providers' patterns
+1.  `Manager#shouldFetch` // e.g. simple type test allows manager code to be written once in core code. New headless CMSs to be added and register themselves on-the-fly (Open-Closed principle).
+1. Individual headless CMS AEM service "Adapters" provide interface implementations, e.g. `TextContent#fetchAll()`, `ImageContent#fetch(${id})`
+1. Individual headless CMS AEM service bundles are configured with
     * location (i.e. URL)
     * authorisation and authentication credentials (e.g. project id, access tokens)
 

@@ -46,7 +46,7 @@ Service code (backing components): 'adapter' and 'manager + providers' patterns
 ###  AEM dispatcher caching (e.g. understanding external content changes)
 1. Cache invalidation
   * headless content should be pulled into aem, rendered and cached by the server.  So, updates to headless CMS must notify, e.g.s
-    1. PUSH TO AEM a web hook exposed from AEM is configured as the 'web hook' in headless CMS
+    1. PUSH TO AEM an endpoint exposed from AEM is configured as the 'web hook' in headless CMS
       * Following notification of changes in published headless content, AEM must find changed pages that include that content.  How to query CRX?  
           * XQuery
           * Custom approach extending or copying AEM broken link finder...

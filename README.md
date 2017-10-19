@@ -53,9 +53,9 @@ Service code (backing components): 'adapter' and 'manager + providers' patterns
     1. PULL FROM HEADLESS poll for content changes - compare changes against stored metadata of published content stored in CRX and flush/ invalidate cache for those.
 
 #### Initial investigations
-1. What is the preferred strategy? - this influences particularly the caching and performance of content delivery.
+1. What is the preferred strategy (and what are the options)? - this may influence particularly the caching and performance of content delivery.
    1. poll content from headless CMS; store it in AEM's CRX.
-       * PROs E.g. as scheduled batch operations.  Gets benefit of AEM to manage content.  Solves cache invalidation issue.  Could be more performant by only syncing only changes.
+       * PROs E.g. as scheduled batch operations.  Gets benefit of AEM to manage content.  Solves cache invalidation issue.  Could be more performant by syncing only changes.
        * CONs duplicates content and duplicates content management effort.  Content may be out of date - though content 'sync' could be manual as well as automateic.
    1. pull referenced data into pages built by AEM - server side - render those pages server side and cache in dispatcher.
    1. 'configure' pages in AEM and pull content directly to browser - skipping server side render and making headless provider do caching etc.  With Contentful this is by default anyway given their content is served via CDN.
